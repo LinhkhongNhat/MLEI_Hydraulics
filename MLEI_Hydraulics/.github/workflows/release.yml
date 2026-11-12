@@ -1,0 +1,60 @@
+name: Build and release installer
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Work out the version
+        id: ver
+        shell: pwsh
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if ($env:REF_TYPE -eq 'tag') { $v = $env:REF_NAME.TrimStart('v') } else { $v = '0.0.0-dev' }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          Write-Host "Version: $v"
+
+      - name: Build for Revit 2025
+        run: dotnet build MLEI_Hydraulics/MLEI_Hydraulics.csproj -c Release -p:RevitVersion=2025 -o MLEI_Hydraulics/bin/Release/R2025
+
+      - name: Build for Revit 2026
+        run: dotnet build MLEI_Hydraulics/MLEI_Hydraulics.csproj -c Release -p:RevitVersion=2026 -o MLEI_Hydraulics/bin/Release/R2026
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build the installer
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$env:VERSION" "installer\MLEI_Hydraulics.iss"
+
+      - name: Keep the installer as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MLEI_Hydraulics_Setup_${{ steps.ver.outputs.version }}
+          path: installer/Output/*.exe
+
+      - name: Create the GitHub release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          gh release create $env:TAG "installer/Output/MLEI_Hydraulics_Setup_$($env:VERSION).exe" --title "MLEI Hydraulics $env:VERSION" --generate-notes
