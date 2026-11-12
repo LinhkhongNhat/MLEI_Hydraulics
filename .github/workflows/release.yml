@@ -1,9 +1,8 @@
 name: Build and release installer
 
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -20,10 +19,10 @@ jobs:
         id: ver
         shell: pwsh
         env:
-          REF_TYPE: ${{ github.ref_type }}
-          REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
         run: |
-          if ($env:REF_TYPE -eq 'tag') { $v = $env:REF_NAME.TrimStart('v') } else { $v = '0.0.0-dev' }
+          if ($env:EVENT_NAME -eq 'release') { $v = $env:TAG_NAME.TrimStart('v') } else { $v = '0.0.0-dev' }
           "version=$v" >> $env:GITHUB_OUTPUT
           Write-Host "Version: $v"
 
@@ -49,12 +48,13 @@ jobs:
           name: MLEI_Hydraulics_Setup_${{ steps.ver.outputs.version }}
           path: installer/Output/*.exe
 
-      - name: Create the GitHub release
-        if: github.ref_type == 'tag'
+      - name: Attach the installer to the release
+        if: github.event_name == 'release'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.event.release.tag_name }}
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
-          gh release create $env:TAG "installer/Output/MLEI_Hydraulics_Setup_$($env:VERSION).exe" --title "MLEI Hydraulics $env:VERSION" --generate-notes
+          gh release upload $env:TAG "installer/Output/MLEI_Hydraulics_Setup_$($env:VERSION).exe" --clobber
