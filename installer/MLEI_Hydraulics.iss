@@ -1,7 +1,7 @@
 #ifndef MyAppVersion
   #define MyAppVersion "1.0.0"
 #endif
-#define MyAppVersion "1.0.0"
+#define MyAppName "MLEI Hydraulics"
 #define MyAppPublisher "MLEI Group"
 
 [Setup]
