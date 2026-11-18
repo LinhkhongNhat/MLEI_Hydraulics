@@ -36,8 +36,9 @@ namespace MLEI_Hydraulics.Tools.SheetExport
     public static class SheetExportService
     {
         /// <summary>
-        /// Reads every non-placeholder sheet together with all its parameter values and those of its
-        /// title block. Reading once here keeps the live file name preview fast (no Revit calls while typing).
+        /// Reads every non-placeholder sheet together with all its parameter values.
+        /// Title block elements are intentionally skipped: collecting their instances forces
+        /// Revit to regenerate graphics for every sheet, which is very slow on large projects.
         /// </summary>
         public static List<SheetExportItem> GetSheets(Document doc)
         {
@@ -52,6 +53,11 @@ namespace MLEI_Hydraulics.Tools.SheetExport
             // Project Information is the same for every sheet, so it is read once
             Dictionary<string, string> projectValues = ReadParameters(doc.ProjectInformation);
 
+            // Shared empty dictionary — no title block data is read (avoids triggering
+            // Revit's graphics regeneration for every sheet)
+            Dictionary<string, string> noTitleBlock =
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
             foreach (ViewSheet sheet in sheets)
             {
                 Dictionary<string, string> sheetValues = ReadParameters(sheet);
@@ -61,13 +67,15 @@ namespace MLEI_Hydraulics.Tools.SheetExport
                 sheetValues["Sheet Name"] = sheet.Name;
 
                 items.Add(new SheetExportItem(sheet.Id, sheet.SheetNumber, sheet.Name,
-                                              sheetValues, ReadTitleBlockValues(doc, sheet), projectValues));
+                                              sheetValues,
+                                              noTitleBlock,
+                                              projectValues));
             }
 
             return items;
         }
 
-        /// <summary>The parameters that can be added to the file name (sheet ones first, then title block ones).</summary>
+        /// <summary>The parameters that can be added to the file name (sheet ones first, then project ones).</summary>
         public static List<AvailableField> GetAvailableFields(IEnumerable<SheetExportItem> items)
         {
             List<SheetExportItem> list = items.ToList();
@@ -78,12 +86,6 @@ namespace MLEI_Hydraulics.Tools.SheetExport
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
                 .Select(n => new AvailableField(NamePartKind.SheetParameter, n)));
-
-            fields.AddRange(list
-                .SelectMany(i => i.TitleBlockValues.Keys)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
-                .Select(n => new AvailableField(NamePartKind.TitleBlockParameter, n)));
 
             fields.AddRange(list
                 .SelectMany(i => i.ProjectValues.Keys)
@@ -240,28 +242,6 @@ namespace MLEI_Hydraulics.Tools.SheetExport
         }
 
         #region Reading parameters
-
-        /// <summary>The sheet's title block: its own parameters, plus those of its type (the instance wins on a clash).</summary>
-        private static Dictionary<string, string> ReadTitleBlockValues(Document doc, ViewSheet sheet)
-        {
-            Element titleBlock = new FilteredElementCollector(doc, sheet.Id)
-                .OfCategory(BuiltInCategory.OST_TitleBlocks)
-                .WhereElementIsNotElementType()
-                .FirstOrDefault();
-
-            if (titleBlock == null)
-                return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-            Dictionary<string, string> values = ReadParameters(titleBlock);
-
-            foreach (KeyValuePair<string, string> pair in ReadParameters(doc.GetElement(titleBlock.GetTypeId())))
-            {
-                if (!values.ContainsKey(pair.Key))
-                    values[pair.Key] = pair.Value;
-            }
-
-            return values;
-        }
 
         private static Dictionary<string, string> ReadParameters(Element element)
         {
