@@ -1,0 +1,178 @@
+<UserControl x:Class="MLEI_Hydraulics.Tools.ScheduleSync.ScheduleSyncView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </UserControl.Resources>
+
+    <!-- Rule: shared brushes use DynamicResource in views (see ComingSoonView) -->
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="250"/>
+            <ColumnDefinition Width="16"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ============ Left: schedule picker ============ -->
+        <DockPanel Grid.Column="0">
+            <TextBox DockPanel.Dock="Top" Margin="0,0,0,8" Padding="4,3" VerticalContentAlignment="Center"
+                     Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="Filter schedules by name or category"/>
+
+            <CheckBox DockPanel.Dock="Bottom" Margin="0,8,0,0" IsChecked="{Binding AllowTypeEdit}"
+                      Content="Allow editing type parameters" TextBlock.FontSize="12">
+                <CheckBox.ToolTip>Type parameters change every element of that type, not just the row you edited.</CheckBox.ToolTip>
+            </CheckBox>
+
+            <ListBox ItemsSource="{Binding SchedulesView}"
+                     SelectedItem="{Binding SelectedSchedule}"
+                     BorderBrush="#DDDDDD">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Margin="2,3">
+                            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{Binding CategoryName}" FontSize="11"
+                                       Foreground="{DynamicResource MutedTextBrush}"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+
+        <!-- ============ Right: export / import ============ -->
+        <Grid Grid.Column="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Mode switch -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                <RadioButton Content="Export to CSV" GroupName="Mode" IsChecked="{Binding IsExportMode}" Margin="0,0,24,0"/>
+                <RadioButton Content="Import from CSV" GroupName="Mode" IsChecked="{Binding IsImportMode}"/>
+                <TextBlock Text="{Binding ElementCountText}" Margin="24,0,0,0"
+                           Foreground="{DynamicResource MutedTextBrush}"/>
+            </StackPanel>
+
+            <!-- Export: choose columns -->
+            <DockPanel Grid.Row="1" Visibility="{Binding IsExportMode, Converter={StaticResource BoolToVis}}">
+                <TextBlock DockPanel.Dock="Bottom" Margin="2,6,0,0" TextWrapping="Wrap"
+                           Foreground="{DynamicResource MutedTextBrush}"
+                           Text="Editable columns are applied when you import. Read-only columns are exported for reference and marked (read-only) in the file."/>
+                <DataGrid ItemsSource="{Binding Columns}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          HeadersVisibility="Column"
+                          GridLinesVisibility="Horizontal"
+                          HorizontalGridLinesBrush="#EEEEEE"
+                          RowHeaderWidth="0"
+                          SelectionMode="Single"
+                          Background="White"
+                          BorderBrush="#DDDDDD">
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Width="40">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding IsIncluded, UpdateSourceTrigger=PropertyChanged}"
+                                              IsEnabled="{Binding IsSupported}"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Column" Width="*" Binding="{Binding Heading, Mode=OneWay}"/>
+                        <DataGridTextColumn Header="Status" Width="220" Binding="{Binding StatusText, Mode=OneWay}"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </DockPanel>
+
+            <!-- Import: preview of changes -->
+            <DockPanel Grid.Row="1" Visibility="{Binding IsImportMode, Converter={StaticResource BoolToVis}}">
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                    <Button DockPanel.Dock="Right" Content="Select none" Padding="10,3" Margin="6,0,0,0"
+                            Command="{Binding SelectNoChangesCommand}"/>
+                    <Button DockPanel.Dock="Right" Content="Select all" Padding="10,3" Margin="6,0,0,0"
+                            Command="{Binding SelectAllChangesCommand}"/>
+                    <Button DockPanel.Dock="Right" Content="Reload" Padding="10,3" Margin="6,0,0,0"
+                            Command="{Binding ReloadImportCommand}"
+                            ToolTip="Read the file again after editing it"/>
+                    <Button DockPanel.Dock="Right" Content="Choose file..." Padding="10,3" Margin="6,0,0,0"
+                            Click="ChooseImport_Click"/>
+                    <TextBox Text="{Binding ImportPath, Mode=OneWay}" IsReadOnly="True"
+                             VerticalContentAlignment="Center" Padding="4,3"/>
+                </DockPanel>
+
+                <Grid>
+                    <DataGrid ItemsSource="{Binding Changes}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              HorizontalGridLinesBrush="#EEEEEE"
+                              RowHeaderWidth="0"
+                              SelectionMode="Single"
+                              Background="White"
+                              BorderBrush="#DDDDDD">
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsProblem}" Value="True">
+                                        <Setter Property="Foreground" Value="#C62828"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsApplied}" Value="True">
+                                        <Setter Property="Foreground" Value="#2E7D32"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Width="40">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"
+                                                  IsEnabled="{Binding IsReady}"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Element ID" Width="90" Binding="{Binding ElementIdText, Mode=OneWay}"/>
+                            <DataGridTextColumn Header="Element" Width="*" Binding="{Binding ElementLabel, Mode=OneWay}"/>
+                            <DataGridTextColumn Header="Field" Width="*" Binding="{Binding Field, Mode=OneWay}"/>
+                            <DataGridTextColumn Header="Current" Width="*" Binding="{Binding OldValue, Mode=OneWay}"/>
+                            <DataGridTextColumn Header="New" Width="*" Binding="{Binding NewValue, Mode=OneWay}"/>
+                            <DataGridTextColumn Header="Status" Width="150" Binding="{Binding StatusText, Mode=OneWay}"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </DockPanel>
+
+            <!-- Bottom bar -->
+            <Grid Grid.Row="2" Margin="0,12,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock Text="{Binding SummaryText}" FontWeight="SemiBold"/>
+                    <TextBlock Text="{Binding StatusText}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding StatusText}"
+                               Foreground="{DynamicResource MutedTextBrush}"/>
+                </StackPanel>
+
+                <Button Grid.Column="1" Content="Export..." Style="{DynamicResource PrimaryButtonStyle}"
+                        IsEnabled="{Binding CanExport}"
+                        Visibility="{Binding IsExportMode, Converter={StaticResource BoolToVis}}"
+                        Click="Export_Click"/>
+                <Button Grid.Column="1" Content="Apply changes" Style="{DynamicResource PrimaryButtonStyle}"
+                        Command="{Binding ApplyCommand}"
+                        Visibility="{Binding IsImportMode, Converter={StaticResource BoolToVis}}"/>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

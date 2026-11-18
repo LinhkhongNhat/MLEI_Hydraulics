@@ -1,0 +1,22 @@
+<UserControl x:Class="MLEI_Hydraulics.UI.ComingSoonView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Rule for every tool view: use DynamicResource (not StaticResource) for the shared brushes,
+         because a UserControl is parsed before it is attached to the window's resources. -->
+    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="480">
+        <TextBlock x:Name="TitleText"
+                   HorizontalAlignment="Center"
+                   FontSize="22" FontWeight="SemiBold"
+                   Foreground="{DynamicResource AccentBrush}"/>
+        <TextBlock x:Name="DescriptionText"
+                   Margin="0,8,0,0"
+                   TextWrapping="Wrap" TextAlignment="Center"
+                   FontSize="14"
+                   Foreground="{DynamicResource MutedTextBrush}"/>
+        <TextBlock Text="Coming soon"
+                   Margin="0,16,0,0"
+                   HorizontalAlignment="Center"
+                   FontSize="12"
+                   Foreground="{DynamicResource MutedTextBrush}"/>
+    </StackPanel>
+</UserControl>

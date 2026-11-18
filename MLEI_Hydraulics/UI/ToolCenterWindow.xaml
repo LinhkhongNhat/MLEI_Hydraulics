@@ -1,0 +1,73 @@
+<Window x:Class="MLEI_Hydraulics.UI.ToolCenterWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="MLEI Hydraulics Tool Center"
+        Width="1000" Height="600"
+        MinWidth="820" MinHeight="480"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="CanResize"
+        WindowStyle="None"
+        FontFamily="Segoe UI">
+
+    <!-- WindowChrome gives us resizable edges while keeping our own title bar.
+         CaptionHeight=0 because dragging is handled by the title bar's own mouse handler. -->
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="0"
+                            ResizeBorderThickness="6"
+                            GlassFrameThickness="0"
+                            CornerRadius="0"
+                            UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/MLEI_Hydraulics;component/UI/Styles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <!-- Outer shell with a thin border so the window edge stays visible -->
+    <Border Background="{StaticResource WindowBackgroundBrush}"
+            BorderBrush="{StaticResource TitleBarBrush}"
+            BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="40"/>    <!-- title bar -->
+                <RowDefinition Height="*"/>     <!-- tabs + tool content -->
+            </Grid.RowDefinitions>
+
+            <!-- Title bar (drag to move) -->
+            <Border Grid.Row="0"
+                    Background="{StaticResource TitleBarBrush}"
+                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Image Grid.Column="0" Height="28" Margin="12,0,0,0" Stretch="Uniform"
+                           Source="pack://application:,,,/MLEI_Hydraulics;component/Resources/MLEI_Logo_3.png"/>
+
+                    <Border Grid.Column="1" Width="1" Height="16" Margin="14,0"
+                            Background="{StaticResource DividerBrush}"/>
+
+                    <TextBlock Grid.Column="2"
+                               Text="MLEI Hydraulics Tool Center"
+                               VerticalAlignment="Center"
+                               FontSize="14" FontWeight="SemiBold"
+                               Foreground="{StaticResource TitleTextBrush}"/>
+
+                    <Button Grid.Column="3" Style="{StaticResource CloseButtonStyle}" Click="Close_Click"/>
+                </Grid>
+            </Border>
+
+            <!-- Tabs are added from ToolRegistry in code-behind -->
+            <TabControl x:Name="ToolTabs" Grid.Row="1" Style="{StaticResource ToolTabControlStyle}"/>
+        </Grid>
+    </Border>
+</Window>
