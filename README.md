@@ -32,11 +32,13 @@ Spreadsheets are exchanged as **CSV**. In Excel, use **Save As > CSV UTF-8** so 
 
 ### Sheet export
 
-1. Tick the sheets (the search box filters the list).
+1. Tick the sheets. The search box finds sheets by words typed in order, so `drainage zone 10` finds `Drainage-Level 2-Zone 10_REV01` (but `zone 10 drainage` does not). To reuse a selection, type a name in the **Sheet set** box and press **Save set**. Later, pick that set from the box to tick exactly those sheets again, or pick **(none)** to untick everything. Sets belong to the project they were saved in. **Delete** removes a set.
 2. Choose **PDF** or **DWG**. For DWG, pick one of the project's export setups.
-3. Choose the output folder and build the file name. The name is an ordered list of **parts**, joined with the separator you choose. A part can be a **sheet parameter** (sheet number, sheet name, drawn by, revision...), a **title block parameter**, a **project information parameter** (project number, client name...), or **fixed text**. Use Up / Down to change the order. Parts that are empty for a sheet are left out. A **prefix** and **suffix** can be added around the whole name.
+3. Choose the output folder and build the file name. The name is an ordered list of **parts**, joined with the separator you choose. A part can be a **sheet parameter** (sheet number, sheet name, drawn by, revision...), a **project information parameter** (project number, client name...), or **fixed text**. Use Up / Down to change the order. Parts that are empty for a sheet are left out. A **prefix** and **suffix** can be added around the whole name.
 4. The list previews the final file names. Sheets that would get the same name are shown in red and block the export.
 5. Press **Export**. Existing files are skipped unless **Overwrite** is ticked.
+
+The tool remembers its last settings (PDF or DWG, DWG setup, folder, file name parts, prefix, suffix and the other options), so it opens the way you left it.
 
 ### Schedule export / import
 

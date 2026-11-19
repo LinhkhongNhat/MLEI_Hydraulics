@@ -23,6 +23,21 @@ namespace MLEI_Hydraulics.Tools.SheetExport
         }
     }
 
+    /// <summary>One sheet in a saved set. The unique id survives renumbering; the number is the fallback.</summary>
+    public class SheetRefSetting
+    {
+        public string UniqueId { get; set; } = "";
+        public string Number { get; set; } = "";
+    }
+
+    /// <summary>A named group of sheets that can be ticked again with one click. Belongs to one project.</summary>
+    public class SheetSetSetting
+    {
+        public string Name { get; set; } = "";
+        public string ProjectKey { get; set; } = "";
+        public List<SheetRefSetting> Sheets { get; set; } = new List<SheetRefSetting>();
+    }
+
     /// <summary>The last choices made in the sheet export tab. Saved per Windows user.</summary>
     public class SheetExportSettings
     {
@@ -37,6 +52,9 @@ namespace MLEI_Hydraulics.Tools.SheetExport
 
         /// <summary>The file name pieces in order. Empty means "use the default" (sheet number, sheet name).</summary>
         public List<NamePartSetting> Parts { get; set; } = new List<NamePartSetting>();
+
+        /// <summary>Saved sheet sets for all projects (each set knows its project).</summary>
+        public List<SheetSetSetting> Sets { get; set; } = new List<SheetSetSetting>();
 
         private const string FileName = "SheetExportSettings.xml";
 

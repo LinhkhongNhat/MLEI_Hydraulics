@@ -18,19 +18,39 @@ namespace MLEI_Hydraulics.Tools.SheetExport
 
         private readonly Document _doc;
         private readonly Dispatcher _dispatcher;
+        private readonly DispatcherTimer _saveTimer;
         private readonly HashSet<string> _sheetFieldNames;
         private readonly HashSet<string> _titleBlockFieldNames;
         private readonly HashSet<string> _projectFieldNames;
+        private readonly Dictionary<SheetExportItem, string> _uniqueIds = new Dictionary<SheetExportItem, string>();
+        private readonly string _projectKey;
+        private List<SheetSetSetting> _otherProjectSets = new List<SheetSetSetting>();
         private bool _suspendRefresh;
+        private bool _suspendSetApply;
+
+        /// <summary>The first entry of the set box. Choosing it unticks every sheet. It is never saved.</summary>
+        private static readonly SheetSetSetting NoneSet = new SheetSetSetting { Name = "(none)" };
 
         public SheetExportViewModel(Document doc)
         {
             _doc = doc;
             _dispatcher = Dispatcher.CurrentDispatcher;
+            _projectKey = GetProjectKey(doc);
+
+            // Options are saved shortly after the last change, so closing the tool never loses them
+            _saveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
+            _saveTimer.Tick += (s, e) =>
+            {
+                _saveTimer.Stop();
+                SaveSettings();
+            };
 
             Sheets = new ObservableCollection<SheetExportItem>(SheetExportService.GetSheets(doc));
             foreach (SheetExportItem item in Sheets)
+            {
                 item.PropertyChanged += OnItemChanged;
+                _uniqueIds[item] = doc.GetElement(item.Id)?.UniqueId ?? "";
+            }
 
             SheetsView = CollectionViewSource.GetDefaultView(Sheets);
             SheetsView.Filter = FilterSheet;
@@ -51,7 +71,15 @@ namespace MLEI_Hydraulics.Tools.SheetExport
             _selectedField = AvailableFields.FirstOrDefault();
 
             Parts = new ObservableCollection<NamePart>();
-            Parts.CollectionChanged += (s, e) => RefreshNames();
+            Parts.CollectionChanged += (s, e) =>
+            {
+                RefreshNames();
+                ScheduleSave();
+            };
+
+            SheetSets = new ObservableCollection<SheetSetSetting> { NoneSet };
+            _selectedSet = NoneSet;
+            _setName = NoneSet.Name;
 
             _suspendRefresh = true;
             LoadSettings();
@@ -71,6 +99,9 @@ namespace MLEI_Hydraulics.Tools.SheetExport
             MoveDownCommand = new RelayCommand(_ => MovePart(1), _ => CanMovePart(1));
             RemovePartCommand = new RelayCommand(_ => RemovePart(), _ => SelectedPart != null);
 
+            SaveSetCommand = new RelayCommand(_ => SaveSet(), _ => CanSaveSet());
+            DeleteSetCommand = new RelayCommand(_ => DeleteSet(), _ => FindSet(SetName) != null);
+
             RefreshNames();
         }
 
@@ -86,6 +117,9 @@ namespace MLEI_Hydraulics.Tools.SheetExport
         /// <summary>The parameters that can be added as a piece.</summary>
         public List<AvailableField> AvailableFields { get; }
 
+        /// <summary>The saved sheet sets of the current project.</summary>
+        public ObservableCollection<SheetSetSetting> SheetSets { get; }
+
         public ICommand SelectAllCommand { get; }
         public ICommand SelectNoneCommand { get; }
         public ICommand ExportCommand { get; }
@@ -95,6 +129,8 @@ namespace MLEI_Hydraulics.Tools.SheetExport
         public ICommand MoveUpCommand { get; }
         public ICommand MoveDownCommand { get; }
         public ICommand RemovePartCommand { get; }
+        public ICommand SaveSetCommand { get; }
+        public ICommand DeleteSetCommand { get; }
 
         private string _searchText = "";
         public string SearchText
@@ -117,6 +153,7 @@ namespace MLEI_Hydraulics.Tools.SheetExport
                 {
                     OnPropertyChanged(nameof(IsDwg));
                     RefreshNames();
+                    ScheduleSave();
                 }
             }
         }
@@ -131,49 +168,49 @@ namespace MLEI_Hydraulics.Tools.SheetExport
         public string SelectedDwgSetup
         {
             get => _selectedDwgSetup;
-            set => Set(ref _selectedDwgSetup, value);
+            set { if (Set(ref _selectedDwgSetup, value)) ScheduleSave(); }
         }
 
         private bool _mergeViews = true;
         public bool MergeViews
         {
             get => _mergeViews;
-            set => Set(ref _mergeViews, value);
+            set { if (Set(ref _mergeViews, value)) ScheduleSave(); }
         }
 
         private bool _overwrite;
         public bool Overwrite
         {
             get => _overwrite;
-            set => Set(ref _overwrite, value);
+            set { if (Set(ref _overwrite, value)) ScheduleSave(); }
         }
 
         private string _outputFolder = "";
         public string OutputFolder
         {
             get => _outputFolder;
-            set => Set(ref _outputFolder, value);
+            set { if (Set(ref _outputFolder, value)) ScheduleSave(); }
         }
 
         private string _prefix = "";
         public string Prefix
         {
             get => _prefix;
-            set { if (Set(ref _prefix, value)) RefreshNames(); }
+            set { if (Set(ref _prefix, value)) { RefreshNames(); ScheduleSave(); } }
         }
 
         private string _suffix = "";
         public string Suffix
         {
             get => _suffix;
-            set { if (Set(ref _suffix, value)) RefreshNames(); }
+            set { if (Set(ref _suffix, value)) { RefreshNames(); ScheduleSave(); } }
         }
 
         private string _separator = " - ";
         public string Separator
         {
             get => _separator;
-            set { if (Set(ref _separator, value)) RefreshNames(); }
+            set { if (Set(ref _separator, value)) { RefreshNames(); ScheduleSave(); } }
         }
 
         private AvailableField _selectedField;
@@ -197,6 +234,32 @@ namespace MLEI_Hydraulics.Tools.SheetExport
             set
             {
                 if (Set(ref _selectedPart, value))
+                    CommandManager.InvalidateRequerySuggested();
+            }
+        }
+
+        private SheetSetSetting _selectedSet;
+
+        /// <summary>Picking a saved set ticks exactly the sheets in it.</summary>
+        public SheetSetSetting SelectedSet
+        {
+            get => _selectedSet;
+            set
+            {
+                if (Set(ref _selectedSet, value) && value != null && !_suspendSetApply)
+                    ApplySet(value);
+            }
+        }
+
+        private string _setName = "";
+
+        /// <summary>The text in the set box: the name a set is saved under.</summary>
+        public string SetName
+        {
+            get => _setName;
+            set
+            {
+                if (Set(ref _setName, value))
                     CommandManager.InvalidateRequerySuggested();
             }
         }
@@ -244,6 +307,162 @@ namespace MLEI_Hydraulics.Tools.SheetExport
         }
 
         public bool InputEnabled => !_isBusy;
+
+        #endregion
+
+        #region Saved sheet sets
+
+        private SheetSetSetting FindSet(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return null;
+
+            return SheetSets.FirstOrDefault(s =>
+                !ReferenceEquals(s, NoneSet) &&
+                s.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase));
+        }
+
+        private bool CanSaveSet()
+            => !IsBusy
+               && !string.IsNullOrWhiteSpace(SetName)
+               && !SetName.Trim().Equals(NoneSet.Name, StringComparison.OrdinalIgnoreCase)
+               && Sheets.Any(s => s.IsSelected);
+
+        /// <summary>Saves the ticked sheets under the typed name (replacing a set with the same name).</summary>
+        private void SaveSet()
+        {
+            string name = SetName.Trim();
+
+            List<SheetRefSetting> refs = Sheets
+                .Where(s => s.IsSelected)
+                .Select(s => new SheetRefSetting { UniqueId = _uniqueIds[s], Number = s.SheetNumber })
+                .ToList();
+
+            SheetSetSetting set = FindSet(name);
+            if (set != null)
+            {
+                set.Sheets = refs;
+                StatusText = $"Updated the set \"{set.Name}\" ({refs.Count} sheets).";
+            }
+            else
+            {
+                set = new SheetSetSetting { Name = name, ProjectKey = _projectKey, Sheets = refs };
+
+                int index = 1; // position 0 is "(none)"
+                while (index < SheetSets.Count &&
+                       string.Compare(SheetSets[index].Name, name, StringComparison.OrdinalIgnoreCase) < 0)
+                    index++;
+                SheetSets.Insert(index, set);
+
+                StatusText = $"Saved the set \"{name}\" ({refs.Count} sheets).";
+            }
+
+            _suspendSetApply = true;
+            SelectedSet = set;
+            _suspendSetApply = false;
+
+            SaveSettings();
+        }
+
+        private void DeleteSet()
+        {
+            SheetSetSetting set = FindSet(SetName);
+            if (set == null)
+                return;
+
+            TaskDialog confirm = new TaskDialog("Sheet export")
+            {
+                MainInstruction = $"Delete the set \"{set.Name}\"?",
+                MainContent = "The sheets themselves are not affected.",
+                CommonButtons = TaskDialogCommonButtons.Yes | TaskDialogCommonButtons.No
+            };
+
+            if (confirm.Show() != TaskDialogResult.Yes)
+                return;
+
+            SheetSets.Remove(set);
+
+            _suspendSetApply = true;
+            SelectedSet = null;
+            _suspendSetApply = false;
+            SetName = "";
+
+            SaveSettings();
+            StatusText = $"Deleted the set \"{set.Name}\".";
+        }
+
+        /// <summary>Ticks exactly the sheets of the set. Sheets are found by unique id first, then by number.</summary>
+        private void ApplySet(SheetSetSetting set)
+        {
+            if (ReferenceEquals(set, NoneSet))
+            {
+                _suspendRefresh = true;
+                foreach (SheetExportItem item in Sheets)
+                    item.IsSelected = false;
+                _suspendRefresh = false;
+
+                RefreshNames();
+                StatusText = "Selection cleared.";
+                return;
+            }
+
+            Dictionary<string, SheetExportItem> byUniqueId = new Dictionary<string, SheetExportItem>();
+            Dictionary<string, SheetExportItem> byNumber = new Dictionary<string, SheetExportItem>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (SheetExportItem item in Sheets)
+            {
+                byUniqueId[_uniqueIds[item]] = item;
+                byNumber[item.SheetNumber] = item;
+            }
+
+            int found = 0, missing = 0;
+
+            _suspendRefresh = true;
+            foreach (SheetExportItem item in Sheets)
+                item.IsSelected = false;
+
+            foreach (SheetRefSetting r in set.Sheets)
+            {
+                SheetExportItem match;
+                if (byUniqueId.TryGetValue(r.UniqueId ?? "", out match) || byNumber.TryGetValue(r.Number ?? "", out match))
+                {
+                    match.IsSelected = true;
+                    found++;
+                }
+                else
+                {
+                    missing++;
+                }
+            }
+            _suspendRefresh = false;
+
+            RefreshNames();
+
+            StatusText = missing == 0
+                ? $"Set \"{set.Name}\": {found} sheets ticked."
+                : $"Set \"{set.Name}\": {found} sheets ticked, {missing} no longer in the project.";
+        }
+
+        /// <summary>Identifies the project so saved sets only show up in the project they were made in.</summary>
+        private static string GetProjectKey(Document doc)
+        {
+            try
+            {
+                if (doc.IsWorkshared)
+                {
+                    ModelPath central = doc.GetWorksharingCentralModelPath();
+                    if (central != null)
+                        return ModelPathUtils.ConvertModelPathToUserVisiblePath(central).ToLowerInvariant();
+                }
+            }
+            catch
+            {
+                // Fall through to the file path
+            }
+
+            string path = string.IsNullOrEmpty(doc.PathName) ? doc.Title : doc.PathName;
+            return (path ?? "").ToLowerInvariant();
+        }
 
         #endregion
 
@@ -306,26 +525,55 @@ namespace MLEI_Hydraulics.Tools.SheetExport
             if (string.IsNullOrWhiteSpace(_searchText))
                 return true;
 
+            // Searches "number name" as one text, so a query can span both ("0105 level 4")
             SheetExportItem item = (SheetExportItem)o;
-            return item.SheetNumber.IndexOf(_searchText, StringComparison.OrdinalIgnoreCase) >= 0
-                || item.SheetName.IndexOf(_searchText, StringComparison.OrdinalIgnoreCase) >= 0;
+            return SearchMatcher.MatchesInOrder(item.SheetNumber + " " + item.SheetName, _searchText);
         }
 
         /// <summary>Ticks or unticks the sheets currently visible (so it respects the search box).</summary>
         private void SetVisibleSelection(bool selected)
         {
+            bool changed = false;
+
             _suspendRefresh = true;
             foreach (SheetExportItem item in SheetsView.Cast<SheetExportItem>())
-                item.IsSelected = selected;
+            {
+                if (item.IsSelected != selected)
+                {
+                    item.IsSelected = selected;
+                    changed = true;
+                }
+            }
             _suspendRefresh = false;
 
             RefreshNames();
+
+            if (changed)
+                ClearNoneChoice();
         }
 
         private void OnItemChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(SheetExportItem.IsSelected) && !_suspendRefresh)
+            {
                 RefreshNames();
+                ClearNoneChoice();
+            }
+        }
+
+        /// <summary>
+        /// Once the user ticks sheets by hand, "(none)" no longer describes the selection. Emptying the box
+        /// (ready for a new set name) also means choosing "(none)" again later counts as a change and unticks everything.
+        /// </summary>
+        private void ClearNoneChoice()
+        {
+            if (!ReferenceEquals(_selectedSet, NoneSet))
+                return;
+
+            _suspendSetApply = true;
+            SelectedSet = null;
+            _suspendSetApply = false;
+            SetName = "";
         }
 
         /// <summary>Recomputes every file name, flags duplicates, and updates the selection counter.</summary>
@@ -458,6 +706,23 @@ namespace MLEI_Hydraulics.Tools.SheetExport
 
         #region Settings
 
+        /// <summary>Saves a moment after the last change. Called whenever an option changes.</summary>
+        private void ScheduleSave()
+        {
+            if (_suspendRefresh)
+                return; // still loading
+
+            _saveTimer.Stop();
+            _saveTimer.Start();
+        }
+
+        /// <summary>Saves right now. The view calls this when it is closed or switched away from.</summary>
+        public void FlushSettings()
+        {
+            _saveTimer.Stop();
+            SaveSettings();
+        }
+
         private void LoadSettings()
         {
             SheetExportSettings s = SheetExportSettings.Load();
@@ -485,6 +750,17 @@ namespace MLEI_Hydraulics.Tools.SheetExport
 
             foreach (NamePartSetting p in saved)
                 Parts.Add(new NamePart(p.Kind, p.Value));
+
+            // Sets of other projects are kept untouched; only this project's sets are shown
+            List<SheetSetSetting> allSets = s.Sets ?? new List<SheetSetSetting>();
+            _otherProjectSets = allSets.Where(x => x.ProjectKey != _projectKey).ToList();
+
+            foreach (SheetSetSetting set in allSets
+                .Where(x => x.ProjectKey == _projectKey)
+                .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                SheetSets.Add(set);
+            }
         }
 
         private void SaveSettings()
@@ -499,7 +775,8 @@ namespace MLEI_Hydraulics.Tools.SheetExport
                 MergeViews = MergeViews,
                 Overwrite = Overwrite,
                 DwgSetup = SelectedDwgSetup == DefaultSetupLabel ? "" : SelectedDwgSetup,
-                Parts = Parts.Select(p => new NamePartSetting(p.Kind, p.Value)).ToList()
+                Parts = Parts.Select(p => new NamePartSetting(p.Kind, p.Value)).ToList(),
+                Sets = _otherProjectSets.Concat(SheetSets.Where(s => !ReferenceEquals(s, NoneSet))).ToList()
             }.Save();
         }
 

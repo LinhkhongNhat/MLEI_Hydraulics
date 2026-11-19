@@ -14,6 +14,9 @@ namespace MLEI_Hydraulics.Tools.SheetExport
             InitializeComponent();
             _viewModel = new SheetExportViewModel(context.Doc);
             DataContext = _viewModel;
+
+            // Options are also saved shortly after every change; this makes sure nothing is lost on close
+            Unloaded += (s, e) => _viewModel.FlushSettings();
         }
 
         /// <summary>The only UI-specific logic: showing the folder dialog. Everything else lives in the view model.</summary>

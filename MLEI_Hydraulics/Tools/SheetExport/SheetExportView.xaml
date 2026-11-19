@@ -25,6 +25,25 @@
 
         <!-- ============ Left: sheet list ============ -->
         <DockPanel Grid.Row="0" Grid.Column="0">
+            <!-- Saved sheet sets: pick one to tick its sheets, or type a name and press Save set -->
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8" LastChildFill="True">
+                <TextBlock DockPanel.Dock="Left" Text="Sheet set" FontWeight="SemiBold"
+                           VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <Button DockPanel.Dock="Right" Content="Delete" Padding="10,3" Margin="6,0,0,0"
+                        Command="{Binding DeleteSetCommand}"
+                        ToolTip="Delete the saved set named in the box"/>
+                <Button DockPanel.Dock="Right" Content="Save set" Padding="10,3" Margin="6,0,0,0"
+                        Command="{Binding SaveSetCommand}"
+                        ToolTip="Save the ticked sheets under the name in the box"/>
+                <ComboBox IsEditable="True"
+                          IsTextSearchEnabled="False"
+                          ItemsSource="{Binding SheetSets}"
+                          DisplayMemberPath="Name"
+                          SelectedItem="{Binding SelectedSet}"
+                          Text="{Binding SetName, UpdateSourceTrigger=PropertyChanged}"
+                          ToolTip="Pick a saved set to tick its sheets, (none) to untick everything, or type a new name and press Save set"/>
+            </DockPanel>
+
             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8" LastChildFill="True">
                 <Button DockPanel.Dock="Right" Content="Select none" Padding="10,3" Margin="6,0,0,0"
                         Command="{Binding SelectNoneCommand}"/>
@@ -32,7 +51,7 @@
                         Command="{Binding SelectAllCommand}"/>
                 <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                          VerticalContentAlignment="Center" Padding="4,3"
-                         ToolTip="Filter by sheet number or name"/>
+                         ToolTip="Type words in the order they appear in the sheet number or name, e.g. drainage zone 10"/>
             </DockPanel>
 
             <TextBlock DockPanel.Dock="Bottom" Margin="2,6,0,0"

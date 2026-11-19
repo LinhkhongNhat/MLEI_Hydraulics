@@ -35,4 +35,14 @@
 		<Resource Include="Resources\*.png" />
 	</ItemGroup>
 
+	<!-- Debug builds: automatically copy the DLL to the installed location so Revit
+	     picks up your latest code without touching the .addin file or the installer.
+	     Release builds are left alone — they are handled by the CI installer pipeline. -->
+	<Target Name="DeployDebug" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug'">
+		<Message Text="Deploying debug build → %LOCALAPPDATA%\MLEI_Hydraulics\$(RevitVersion)\" Importance="high" />
+		<Copy SourceFiles="$(OutputPath)$(AssemblyName).dll"
+		      DestinationFolder="$(LocalAppData)\MLEI_Hydraulics\$(RevitVersion)"
+		      OverwriteReadOnlyFiles="true" />
+	</Target>
+
 </Project>

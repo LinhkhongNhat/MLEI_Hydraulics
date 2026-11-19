@@ -151,8 +151,7 @@ namespace MLEI_Hydraulics.Tools.ScheduleSync
                 return true;
 
             ScheduleOption item = (ScheduleOption)o;
-            return item.Name.IndexOf(_searchText, StringComparison.OrdinalIgnoreCase) >= 0
-                || item.CategoryName.IndexOf(_searchText, StringComparison.OrdinalIgnoreCase) >= 0;
+            return SearchMatcher.MatchesInOrder(item.Name + " " + item.CategoryName, _searchText);
         }
 
         private void LoadSchedule()
