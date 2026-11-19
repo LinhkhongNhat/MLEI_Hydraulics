@@ -14,8 +14,8 @@ namespace MLEI_Hydraulics
         UpLeft,
         DownRight,
         DownLeft
-
     }
+
     public class TagTypeRef
     {
         public string FamilyName { get; set; }
@@ -36,6 +36,10 @@ namespace MLEI_Hydraulics
         public TagTypeRef Horizontal { get; set; } = new TagTypeRef("AN_PIPE ANNOTATIONS", "SIZE");
         public TagTypeRef Sloped { get; set; } = new TagTypeRef("AN_PIPE ANNOTATIONS", "SIZE_GRADE");
         public TagTypeRef Vertical { get; set; } = new TagTypeRef("AN_HEXTAG", "COMMENT DOWN");
+
+        // Configurable parameters
+        public double MinimumPipeLength { get; set; } = 2000.0; // in millimeters
+        public double TagOffsetDistance { get; set; } = 20.0; // in millimeters
 
         // %AppData%\MLEI_Hydraulics\AutoTagSettings.xml
         private static string FilePath
@@ -65,6 +69,11 @@ namespace MLEI_Hydraulics
                             loaded.Sloped != null &&
                             loaded.Vertical != null)
                         {
+                            // Ensure new properties have defaults if missing
+                            if (loaded.MinimumPipeLength <= 0)
+                                loaded.MinimumPipeLength = 2000.0;
+                            if (loaded.TagOffsetDistance < 0)
+                                loaded.TagOffsetDistance = 20.0;
                             return loaded;
                         }
                     }

@@ -118,8 +118,8 @@ namespace MLEI_Hydraulics
                     if (locationCurve == null)
                         continue;
 
-                    // check the pipe length and only tag if the length is greater than 2.5 meters
-                    double minLength = UnitUtils.ConvertToInternalUnits(2000, UnitTypeId.Millimeters); // 2.0 meters in feet
+                    // check the pipe length and only tag if the length is greater than the minimum setting
+                    double minLength = UnitUtils.ConvertToInternalUnits(settings.MinimumPipeLength, UnitTypeId.Millimeters);
                     if (locationCurve.Curve.Length < minLength)
                     {
                         continue; // Skip this pipe if it's too short
@@ -193,10 +193,21 @@ namespace MLEI_Hydraulics
                         tag.ChangeTypeId(selectedTagType.Id);
                         taggedCount++;
 
-                        // Define the distance to move the tag away from the pipe based on its diameter, right now its 0.7 feet away from the pipe, you can adjust this value as needed
+                        // Calculate tag offset based on pipe diameter and user-configured offset distance
+                        // Convert offset from millimeters to internal units (feet)
+                        double offsetInFeet = UnitUtils.ConvertToInternalUnits(settings.TagOffsetDistance, UnitTypeId.Millimeters);
+                        double moveDistance = diameter + offsetInFeet;
 
-                        double moveDistance = diameter +0.7;
-                        tag.TagHeadPosition = midPoint + offsetDirection * moveDistance;
+                        // Determine horizontal placement based on the vertical direction button pressed
+                        // UpLeft/UpRight -> place tag above horizontal pipe
+                        // DownLeft/DownRight -> place tag below horizontal pipe
+                        bool placeAbove = (verticalDirection == VerticalTagDirection.UpLeft || verticalDirection == VerticalTagDirection.UpRight);
+
+                        XYZ tagOffset = placeAbove 
+                            ? offsetDirection * moveDistance 
+                            : offsetDirection * (-moveDistance);
+
+                        tag.TagHeadPosition = midPoint + tagOffset;
                     }
 
                     catch
@@ -205,7 +216,7 @@ namespace MLEI_Hydraulics
                     }
                 }
                 // OLD:  ... verticalTagType, settings.VerticalDirection, ref taggedCount);
-                PlaceVerticalTags(doc, doc.ActiveView, verticalPipes, verticalTagType, verticalDirection, ref taggedCount);
+                PlaceVerticalTags(doc, doc.ActiveView, verticalPipes, verticalTagType, verticalDirection, settings, ref taggedCount);
                 trans.Commit();
             }
 
@@ -219,7 +230,7 @@ namespace MLEI_Hydraulics
             public double R;   // position along view right axis
             public double U;   // position along view up axis
         }
-        private static void PlaceVerticalTags( Document doc, View view, List<VPipe> vPipes, FamilySymbol tagType, VerticalTagDirection direction, ref int taggedCount)
+        private static void PlaceVerticalTags( Document doc, View view, List<VPipe> vPipes, FamilySymbol tagType, VerticalTagDirection direction, AutoTagSettings settings, ref int taggedCount)
         {
             if (vPipes.Count == 0) return;
 
