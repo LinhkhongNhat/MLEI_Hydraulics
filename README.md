@@ -19,7 +19,7 @@ To uninstall, use **Settings > Apps > Installed apps > MLEI Hydraulics**.
 
 ## Tool Center
 
-Press **Hydraulics** in the MLEI_HYD tab. The window can be resized and has one tab per tool. Your last choices in each tool are remembered per Windows user.
+Press **Hydraulics** in the MLEI_HYD tab. The window can be resized (it remembers its size) and has one tab per tool. Your last choices in each tool are remembered per Windows user.
 
 Spreadsheets are exchanged as **CSV**. In Excel, use **Save As > CSV UTF-8** so accents are kept.
 
@@ -34,7 +34,7 @@ Spreadsheets are exchanged as **CSV**. In Excel, use **Save As > CSV UTF-8** so 
 
 1. Tick the sheets. The search box finds sheets by words typed in order, so `drainage zone 10` finds `Drainage-Level 2-Zone 10_REV01` (but `zone 10 drainage` does not). To reuse a selection, type a name in the **Sheet set** box and press **Save set**. Later, pick that set from the box to tick exactly those sheets again, or pick **(none)** to untick everything. Sets belong to the project they were saved in. **Delete** removes a set.
 2. Choose **PDF** or **DWG**. For DWG, pick one of the project's export setups.
-3. Choose the output folder and build the file name. The name is an ordered list of **parts**, joined with the separator you choose. A part can be a **sheet parameter** (sheet number, sheet name, drawn by, revision...), a **project information parameter** (project number, client name...), or **fixed text**. Use Up / Down to change the order. Parts that are empty for a sheet are left out. A **prefix** and **suffix** can be added around the whole name.
+3. Choose the output folder and build the file name. The name is an ordered list of **parts**, each with its own **prefix** and **suffix** (for example a suffix of `-` between parts, or a prefix of `_REV` before the revision). A part can be a **sheet parameter** (sheet number, sheet name, drawn by, revision...), a **project information parameter** (project number, client name...), or **fixed text**. Use Up / Down to change the order. Parts that are empty for a sheet are left out together with their own prefix and suffix, and a separator left dangling at the very end is dropped. A **prefix** and **suffix** can also be added around the whole name.
 4. The list previews the final file names. Sheets that would get the same name are shown in red and block the export.
 5. Press **Export**. Existing files are skipped unless **Overwrite** is ticked.
 
@@ -55,11 +55,11 @@ Notes:
 
 1. Select the pipes in a plan view, then press one of the four buttons:
    **Tag up-left**, **Tag up-right**, **Tag down-left**, **Tag down-right**.
-2. Horizontal and sloped pipes get their tag next to the pipe. Vertical pipes get a tag placed in the chosen direction.
+2. Horizontal and sloped pipes get their tag next to the pipe. For a pipe that runs mostly left-right on screen, the two **up** buttons put the tag above it and the two **down** buttons below it. For a pipe that runs mostly up-down on screen, the two **left** buttons put the tag on its left and the two **right** buttons on its right. Vertical pipes (risers) get a tag placed in the chosen direction: left buttons put it on the left, right buttons on the right.
 3. Vertical pipes within 500 mm of each other get their tags in a row, edge to edge. Only the tag closest to the pipes keeps a leader.
-4. Pipes shorter than 2000 mm and pipes that are already tagged in the view are skipped.
+4. Pipes shorter than the minimum length (2000 mm unless changed in Auto tag settings) and pipes that are already tagged in the view are skipped.
 
-**Auto tag settings** chooses which tag family and type is used for horizontal, sloped and vertical pipes. The choice is remembered per Windows user. The tag types must be loaded in the project.
+**Auto tag settings** chooses which tag family and type is used for horizontal, sloped and vertical pipes, the **minimum pipe length** to tag (in mm), and the **offset** (in mm) between a horizontal or sloped pipe and its tag, on top of the pipe diameter. The choices are remembered per Windows user. The tag types must be loaded in the project.
 
 ## Build from source
 

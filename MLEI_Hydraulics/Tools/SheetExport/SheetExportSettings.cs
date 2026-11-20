@@ -14,6 +14,12 @@ namespace MLEI_Hydraulics.Tools.SheetExport
         public NamePartKind Kind { get; set; }
         public string Value { get; set; } = "";
 
+        /// <summary>Null (not in the file) means the setting was saved by an older version.</summary>
+        public string Prefix { get; set; }
+
+        /// <summary>Null (not in the file) means the setting was saved by an older version, which used one shared separator.</summary>
+        public string Suffix { get; set; }
+
         public NamePartSetting() { }
 
         public NamePartSetting(NamePartKind kind, string value)
@@ -45,6 +51,7 @@ namespace MLEI_Hydraulics.Tools.SheetExport
         public string OutputFolder { get; set; } = "";
         public string Prefix { get; set; } = "";
         public string Suffix { get; set; } = "";
+        /// <summary>Legacy: older versions used one separator between all parts. Only read, to migrate old files.</summary>
         public string Separator { get; set; } = " - ";
         public bool MergeViews { get; set; } = true;
         public bool Overwrite { get; set; } = false;

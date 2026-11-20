@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 using System.Text;
@@ -73,6 +74,15 @@ namespace MLEI_Hydraulics.Tools.SheetExport
             Parts = new ObservableCollection<NamePart>();
             Parts.CollectionChanged += (s, e) =>
             {
+                // Watch each part's prefix and suffix so the file names update while typing
+                if (e.Action != NotifyCollectionChangedAction.Move)
+                {
+                    if (e.OldItems != null)
+                        foreach (NamePart removed in e.OldItems) removed.PropertyChanged -= OnPartChanged;
+                    if (e.NewItems != null)
+                        foreach (NamePart added in e.NewItems) added.PropertyChanged += OnPartChanged;
+                }
+
                 RefreshNames();
                 ScheduleSave();
             };
@@ -204,13 +214,6 @@ namespace MLEI_Hydraulics.Tools.SheetExport
         {
             get => _suffix;
             set { if (Set(ref _suffix, value)) { RefreshNames(); ScheduleSave(); } }
-        }
-
-        private string _separator = " - ";
-        public string Separator
-        {
-            get => _separator;
-            set { if (Set(ref _separator, value)) { RefreshNames(); ScheduleSave(); } }
         }
 
         private AvailableField _selectedField;
@@ -505,6 +508,15 @@ namespace MLEI_Hydraulics.Tools.SheetExport
             CommandManager.InvalidateRequerySuggested();
         }
 
+        private void OnPartChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(NamePart.Prefix) || e.PropertyName == nameof(NamePart.Suffix))
+            {
+                RefreshNames();
+                ScheduleSave();
+            }
+        }
+
         private bool IsMissing(NamePart part)
         {
             switch (part.Kind)
@@ -589,7 +601,6 @@ namespace MLEI_Hydraulics.Tools.SheetExport
             {
                 Prefix = _prefix,
                 Suffix = _suffix,
-                Separator = _separator,
                 Parts = Parts.ToList()
             };
             string ext = _isPdf ? ".pdf" : ".dwg";
@@ -731,7 +742,6 @@ namespace MLEI_Hydraulics.Tools.SheetExport
             _outputFolder = s.OutputFolder ?? "";
             _prefix = s.Prefix ?? "";
             _suffix = s.Suffix ?? "";
-            _separator = s.Separator ?? " - ";
             _mergeViews = s.MergeViews;
             _overwrite = s.Overwrite;
             _selectedDwgSetup = !string.IsNullOrEmpty(s.DwgSetup) && DwgSetups.Contains(s.DwgSetup)
@@ -748,8 +758,11 @@ namespace MLEI_Hydraulics.Tools.SheetExport
                     new NamePartSetting(NamePartKind.SheetParameter, "Sheet Name")
                 };
 
+            // Files saved by older versions have no per-part suffix: they used one shared separator
+            string legacySeparator = s.Separator ?? " - ";
+
             foreach (NamePartSetting p in saved)
-                Parts.Add(new NamePart(p.Kind, p.Value));
+                Parts.Add(new NamePart(p.Kind, p.Value, p.Prefix ?? "", p.Suffix ?? legacySeparator));
 
             // Sets of other projects are kept untouched; only this project's sets are shown
             List<SheetSetSetting> allSets = s.Sets ?? new List<SheetSetSetting>();
@@ -771,11 +784,10 @@ namespace MLEI_Hydraulics.Tools.SheetExport
                 OutputFolder = OutputFolder,
                 Prefix = Prefix,
                 Suffix = Suffix,
-                Separator = Separator,
                 MergeViews = MergeViews,
                 Overwrite = Overwrite,
                 DwgSetup = SelectedDwgSetup == DefaultSetupLabel ? "" : SelectedDwgSetup,
-                Parts = Parts.Select(p => new NamePartSetting(p.Kind, p.Value)).ToList(),
+                Parts = Parts.Select(p => new NamePartSetting(p.Kind, p.Value) { Prefix = p.Prefix, Suffix = p.Suffix }).ToList(),
                 Sets = _otherProjectSets.Concat(SheetSets.Where(s => !ReferenceEquals(s, NoneSet))).ToList()
             }.Save();
         }

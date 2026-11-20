@@ -20,7 +20,7 @@
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="16"/>
-            <ColumnDefinition Width="370"/>
+            <ColumnDefinition Width="440"/>
         </Grid.ColumnDefinitions>
 
         <!-- ============ Left: sheet list ============ -->
@@ -100,89 +100,152 @@
         </DockPanel>
 
         <!-- ============ Right: options ============ -->
+        <!-- The grid inside the scroll viewer fills the available height: the parts table (the * row)
+             grows when the window gets taller, and the "add" controls stay at the bottom. -->
         <ScrollViewer Grid.Row="0" Grid.Column="2" VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="0,0,8,0">
+            <Grid Margin="0,0,8,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*" MinHeight="150"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-                <TextBlock Text="Format" Style="{StaticResource SectionTitle}" Margin="0,0,0,4"/>
-                <StackPanel Orientation="Horizontal">
-                    <RadioButton Content="PDF" GroupName="Format" IsChecked="{Binding IsPdf}" Margin="0,0,24,0"/>
-                    <RadioButton Content="DWG" GroupName="Format" IsChecked="{Binding IsDwg}"/>
+                <!-- Format -->
+                <StackPanel Grid.Row="0">
+                    <TextBlock Text="Format" Style="{StaticResource SectionTitle}" Margin="0,0,0,4"/>
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton Content="PDF" GroupName="Format" IsChecked="{Binding IsPdf}" Margin="0,0,24,0"/>
+                        <RadioButton Content="DWG" GroupName="Format" IsChecked="{Binding IsDwg}"/>
+                    </StackPanel>
+
+                    <StackPanel Visibility="{Binding IsDwg, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="DWG export setup" Style="{StaticResource SectionTitle}"/>
+                        <ComboBox ItemsSource="{Binding DwgSetups}" SelectedItem="{Binding SelectedDwgSetup}"/>
+                        <CheckBox Content="Export views on sheets into one file (no external references)"
+                                  IsChecked="{Binding MergeViews}" Margin="0,8,0,0">
+                            <CheckBox.ToolTip>Turn this off to keep each view as a separate xref file, as set in the chosen setup.</CheckBox.ToolTip>
+                        </CheckBox>
+                    </StackPanel>
                 </StackPanel>
 
-                <StackPanel Visibility="{Binding IsDwg, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="DWG export setup" Style="{StaticResource SectionTitle}"/>
-                    <ComboBox ItemsSource="{Binding DwgSetups}" SelectedItem="{Binding SelectedDwgSetup}"/>
-                    <CheckBox Content="Export views on sheets into one file (no external references)"
-                              IsChecked="{Binding MergeViews}" Margin="0,8,0,0">
-                        <CheckBox.ToolTip>Turn this off to keep each view as a separate xref file, as set in the chosen setup.</CheckBox.ToolTip>
-                    </CheckBox>
+                <!-- Output folder -->
+                <StackPanel Grid.Row="1">
+                    <TextBlock Text="Output folder" Style="{StaticResource SectionTitle}"/>
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Content="Browse..." Padding="10,3" Margin="6,0,0,0"
+                                Click="Browse_Click"/>
+                        <TextBox Text="{Binding OutputFolder, UpdateSourceTrigger=PropertyChanged}"
+                                 VerticalContentAlignment="Center" Padding="4,3"/>
+                    </DockPanel>
                 </StackPanel>
 
-                <TextBlock Text="Output folder" Style="{StaticResource SectionTitle}"/>
-                <DockPanel>
-                    <Button DockPanel.Dock="Right" Content="Browse..." Padding="10,3" Margin="6,0,0,0"
-                            Click="Browse_Click"/>
-                    <TextBox Text="{Binding OutputFolder, UpdateSourceTrigger=PropertyChanged}"
-                             VerticalContentAlignment="Center" Padding="4,3"/>
-                </DockPanel>
+                <!-- File name: text for the very start and end of the name -->
+                <StackPanel Grid.Row="2">
+                    <TextBlock Text="File name" Style="{StaticResource SectionTitle}"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Prefix (start of the whole name)" Foreground="{DynamicResource MutedTextBrush}"/>
+                            <TextBox Text="{Binding Prefix, UpdateSourceTrigger=PropertyChanged}" Padding="4,3"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Suffix (end of the whole name)" Foreground="{DynamicResource MutedTextBrush}"/>
+                            <TextBox Text="{Binding Suffix, UpdateSourceTrigger=PropertyChanged}" Padding="4,3"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
 
-                <!-- ===== File name: prefix + ordered parts + suffix ===== -->
-                <TextBlock Text="File name" Style="{StaticResource SectionTitle}"/>
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="10"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="Prefix" Foreground="{DynamicResource MutedTextBrush}"/>
-                        <TextBox Text="{Binding Prefix, UpdateSourceTrigger=PropertyChanged}" Padding="4,3"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="2">
-                        <TextBlock Text="Suffix" Foreground="{DynamicResource MutedTextBrush}"/>
-                        <TextBox Text="{Binding Suffix, UpdateSourceTrigger=PropertyChanged}" Padding="4,3"/>
-                    </StackPanel>
-                </Grid>
+                <!-- Name parts: grows with the window -->
+                <DockPanel Grid.Row="3" Margin="0,12,0,0">
+                    <TextBlock DockPanel.Dock="Top" Text="Name parts, in order" Margin="0,0,0,2"
+                               Foreground="{DynamicResource MutedTextBrush}"/>
+                    <TextBlock DockPanel.Dock="Bottom" Margin="0,4,0,0" TextWrapping="Wrap" FontSize="11"
+                               Foreground="{DynamicResource MutedTextBrush}"
+                               Text="Prefix and suffix are added around each value. Use the suffix for separators such as -. A part with no value is left out with its prefix and suffix. A separator left at the very end is dropped."/>
 
-                <TextBlock Text="Name parts, joined in this order" Margin="0,10,0,2"
-                           Foreground="{DynamicResource MutedTextBrush}"/>
-                <DockPanel>
-                    <StackPanel DockPanel.Dock="Right" Margin="6,0,0,0" Width="64">
+                    <StackPanel DockPanel.Dock="Right" Margin="6,0,0,0" Width="80">
                         <Button Content="Up" Padding="8,2" Margin="0,0,0,4" Command="{Binding MoveUpCommand}"/>
                         <Button Content="Down" Padding="8,2" Margin="0,0,0,4" Command="{Binding MoveDownCommand}"/>
                         <Button Content="Remove" Padding="8,2" Command="{Binding RemovePartCommand}"/>
                     </StackPanel>
-                    <ListBox ItemsSource="{Binding Parts}"
-                             SelectedItem="{Binding SelectedPart}"
-                             DisplayMemberPath="Display"
-                             Height="120"
-                             BorderBrush="#DDDDDD"/>
+
+                    <DataGrid ItemsSource="{Binding Parts}"
+                              SelectedItem="{Binding SelectedPart}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              CanUserResizeRows="False"
+                              CanUserSortColumns="False"
+                              CanUserReorderColumns="False"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              HorizontalGridLinesBrush="#EEEEEE"
+                              RowHeaderWidth="0"
+                              SelectionMode="Single"
+                              Background="White"
+                              BorderBrush="#DDDDDD">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="Part" Width="*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Display}" ToolTip="{Binding Display}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center" Margin="2,0"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <DataGridTemplateColumn Header="Prefix" Width="64">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBox Text="{Binding Prefix, UpdateSourceTrigger=PropertyChanged}"
+                                                 GotKeyboardFocus="PartBox_GotKeyboardFocus"
+                                                 BorderBrush="#E0E0E0" Padding="2,1" Margin="1"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <DataGridTemplateColumn Header="Suffix" Width="64">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBox Text="{Binding Suffix, UpdateSourceTrigger=PropertyChanged}"
+                                                 GotKeyboardFocus="PartBox_GotKeyboardFocus"
+                                                 BorderBrush="#E0E0E0" Padding="2,1" Margin="1"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
                 </DockPanel>
 
-                <TextBlock Text="Add a sheet, title block or project parameter" Margin="0,10,0,2"
-                           Foreground="{DynamicResource MutedTextBrush}"/>
-                <DockPanel>
-                    <Button DockPanel.Dock="Right" Content="Add" Padding="10,3" Margin="6,0,0,0" MinWidth="64"
-                            Command="{Binding AddFieldCommand}"/>
-                    <ComboBox ItemsSource="{Binding AvailableFields}" SelectedItem="{Binding SelectedField}"/>
-                </DockPanel>
+                <!-- Add controls: stuck to the bottom of the panel -->
+                <StackPanel Grid.Row="4" Margin="0,8,0,0">
+                    <TextBlock Text="Add a sheet or project parameter" Margin="0,4,0,2"
+                               Foreground="{DynamicResource MutedTextBrush}"/>
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Content="Add" Padding="10,3" Margin="6,0,0,0" MinWidth="64"
+                                Command="{Binding AddFieldCommand}"/>
+                        <ComboBox ItemsSource="{Binding AvailableFields}" SelectedItem="{Binding SelectedField}"/>
+                    </DockPanel>
 
-                <TextBlock Text="Add fixed text" Margin="0,10,0,2"
-                           Foreground="{DynamicResource MutedTextBrush}"/>
-                <DockPanel>
-                    <Button DockPanel.Dock="Right" Content="Add text" Padding="10,3" Margin="6,0,0,0" MinWidth="64"
-                            Command="{Binding AddTextCommand}"/>
-                    <TextBox Text="{Binding NewText, UpdateSourceTrigger=PropertyChanged}" Padding="4,3"/>
-                </DockPanel>
+                    <TextBlock Text="Add fixed text" Margin="0,10,0,2"
+                               Foreground="{DynamicResource MutedTextBrush}"/>
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Content="Add text" Padding="10,3" Margin="6,0,0,0" MinWidth="64"
+                                Command="{Binding AddTextCommand}"/>
+                        <TextBox Text="{Binding NewText, UpdateSourceTrigger=PropertyChanged}" Padding="4,3"/>
+                    </DockPanel>
 
-                <StackPanel Margin="0,10,0,0">
-                    <TextBlock Text="Separator between parts" Foreground="{DynamicResource MutedTextBrush}"/>
-                    <TextBox Text="{Binding Separator, UpdateSourceTrigger=PropertyChanged}" Padding="4,3" Width="80"
-                             HorizontalAlignment="Left"/>
+                    <CheckBox Content="Overwrite files that already exist" IsChecked="{Binding Overwrite}" Margin="0,14,0,0"/>
                 </StackPanel>
-
-                <CheckBox Content="Overwrite files that already exist" IsChecked="{Binding Overwrite}" Margin="0,14,0,0"/>
-            </StackPanel>
+            </Grid>
         </ScrollViewer>
 
         <!-- ============ Bottom bar ============ -->

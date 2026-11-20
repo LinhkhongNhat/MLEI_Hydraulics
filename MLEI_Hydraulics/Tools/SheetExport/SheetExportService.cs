@@ -11,7 +11,6 @@ namespace MLEI_Hydraulics.Tools.SheetExport
     {
         public string Prefix { get; set; } = "";
         public string Suffix { get; set; } = "";
-        public string Separator { get; set; } = " - ";
         public IList<NamePart> Parts { get; set; } = new List<NamePart>();
     }
 
@@ -112,12 +111,15 @@ namespace MLEI_Hydraulics.Tools.SheetExport
         }
 
         /// <summary>
-        /// Prefix + the parts joined with the separator + suffix, cleaned of characters Windows does not allow.
-        /// Parts whose value is empty for this sheet are left out, so there are no doubled separators.
+        /// Builds the file name: the name prefix, then every part as (its prefix + value + its suffix),
+        /// then the name suffix. Characters Windows does not allow are replaced.
+        /// A part whose value is empty for this sheet is left out completely, including its own prefix and suffix,
+        /// so there are no doubled separators. A separator left dangling at the very end of the parts
+        /// ("-", "_", space or ".") is dropped; use the name suffix to add text at the end.
         /// </summary>
         public static string BuildFileName(SheetExportItem item, FileNameOptions options)
         {
-            List<string> pieces = new List<string>();
+            StringBuilder body = new StringBuilder();
 
             foreach (NamePart part in options.Parts)
             {
@@ -142,11 +144,15 @@ namespace MLEI_Hydraulics.Tools.SheetExport
                         break;
                 }
 
-                if (!string.IsNullOrEmpty(value))
-                    pieces.Add(value);
+                if (string.IsNullOrEmpty(value))
+                    continue;
+
+                body.Append(part.Prefix).Append(value).Append(part.Suffix);
             }
 
-            string raw = (options.Prefix ?? "") + string.Join(options.Separator ?? "", pieces) + (options.Suffix ?? "");
+            string raw = (options.Prefix ?? "")
+                       + body.ToString().TrimEnd('-', '_', ' ', '.')
+                       + (options.Suffix ?? "");
 
             char[] invalid = System.IO.Path.GetInvalidFileNameChars();
             StringBuilder sb = new StringBuilder(raw.Length);

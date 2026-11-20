@@ -16,10 +16,35 @@ namespace MLEI_Hydraulics.Tools.SheetExport
         /// <summary>The parameter name, or the literal text for a Text part.</summary>
         public string Value { get; }
 
-        public NamePart(NamePartKind kind, string value)
+        /// <summary>A new part: no prefix, and a "-" suffix so parts added one after another come out separated.</summary>
+        public NamePart(NamePartKind kind, string value) : this(kind, value, "", "-")
+        {
+        }
+
+        public NamePart(NamePartKind kind, string value, string prefix, string suffix)
         {
             Kind = kind;
             Value = value ?? "";
+            _prefix = prefix ?? "";
+            _suffix = suffix ?? "";
+        }
+
+        private string _prefix;
+
+        /// <summary>Text added before this part's value (only when the value is not empty).</summary>
+        public string Prefix
+        {
+            get => _prefix;
+            set => Set(ref _prefix, value ?? "");
+        }
+
+        private string _suffix;
+
+        /// <summary>Text added after this part's value (only when the value is not empty). Use it for separators such as "-".</summary>
+        public string Suffix
+        {
+            get => _suffix;
+            set => Set(ref _suffix, value ?? "");
         }
 
         private bool _isMissing;
